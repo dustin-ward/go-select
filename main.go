@@ -29,7 +29,7 @@ type versionInfo struct {
 	version string
 }
 
-var SELECTED versionInfo
+var SELECTED *versionInfo
 
 func (v versionInfo) FilterValue() string { return v.name }
 
@@ -104,7 +104,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if k == "enter" {
 			m.chosen = true
-			SELECTED = m.list.SelectedItem().(versionInfo)
+			v, _ := m.list.SelectedItem().(versionInfo)
+			SELECTED = &v
 			return m, selectVersion
 		}
 
@@ -123,6 +124,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if m.quitting {
+		if SELECTED != nil {
+			return fmt.Sprintf("Go version: %s (named: %s)\n", SELECTED.version, SELECTED.name)
+		} else {
+			return "No Go version selected"
+		}
+	}
 	if m.err != nil {
 		return fmt.Sprintf("Error: %s", m.err)
 	}
@@ -197,5 +205,4 @@ func main() {
 		log.Println(err)
 		os.Exit(1)
 	}
-    print("\n")
 }
