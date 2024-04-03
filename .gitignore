@@ -4,3 +4,4 @@ clipboard/
 wharf_port/
 go.work*
 testing/selected
+main
