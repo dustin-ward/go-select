@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -147,18 +148,26 @@ func selectVersion() tea.Msg {
 	return selectMsg{}
 }
 
+const MAX_DEPTH = 1
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatalf("No directory provided...\nUsage: %s <directory-containing-go-installs>", os.Args[0])
 	}
-	GO_DIR = os.Args[1]
 
-	var max_width int
+	GO_DIR = os.Args[1]
+	separators := strings.Count(GO_DIR, string(os.PathSeparator))
 
 	// Walk directory provided from args to get all available go versions
 	version_list := make([]list.Item, 0)
-	err := filepath.Walk(GO_DIR, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(GO_DIR, func(path string, info fs.DirEntry, err error) error {
 		if info.IsDir() {
+			// Skip depth > 1
+			//TODO: Parameterize?
+			if strings.Count(path, string(os.PathSeparator))-separators > MAX_DEPTH {
+				return fs.SkipDir
+			}
+
 			// Only directories with 'go-build-zos/' are valid go versions
 			if _, err := os.Stat(fmt.Sprintf("%s/go-build-zos", path)); err == nil {
 
@@ -179,9 +188,6 @@ func main() {
 					name:    info.Name(),
 					version: versionString[:n],
 				})
-
-				// Format: "my_go_ver - go1.23.4"
-				max_width = max(max_width, len(info.Name())+n+3)
 			}
 		}
 		return nil
@@ -194,18 +200,12 @@ func main() {
 		log.Fatal("No Go installations found...")
 	}
 
-	// Reverse sorted because I assume the newer version will be selected most...
-	sort.Slice(version_list, func(i, j int) bool {
-		a, ok1 := version_list[i].(versionInfo)
-		b, ok2 := version_list[j].(versionInfo)
-		if !ok1 || !ok2 {
-			log.Fatal("Unable to sort...")
-		}
-		return a.name > b.name
-	})
+	// Filepath/walk produces the dirs in lexicographical order... I assume I would want
+	// the newest versions at the top of the list, so lets reverse the order
+	slices.Reverse(version_list)
 
+	// Start up bubbletea
 	m := initModel(version_list)
-
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		log.Println(err)
