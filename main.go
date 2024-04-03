@@ -50,7 +50,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if index == m.Index() {
 		str = selectedItemStyle.Render(fmt.Sprintf("> %s - %s", i.name, i.version))
 	} else {
-		str = fmt.Sprintf("%s - %s", itemStyle.Render(i.name), versionStyle.Render(i.version))
+		str = fmt.Sprintf("%s %s", itemStyle.Render(i.name), versionStyle.Render("- "+i.version))
 	}
 
 	fmt.Fprint(w, str)

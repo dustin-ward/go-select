@@ -2,6 +2,9 @@
 
 Version switcher for my go on z/OS dev enviroment
 
+
+![Screenshot of the interface](https://github.com/dustin-ward/go-select/blob/master/images/ui.png)
+
 ## Usage:
 
 `go-select <path-to-go-installs>`
