@@ -17,12 +17,12 @@ import (
 var GO_DIR string
 
 var (
-	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4).PaddingRight(2)
+	titleStyle        = lipgloss.NewStyle().MarginLeft(2).Foreground(lipgloss.Color("#ff5500"))
+	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
+	versionStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).PaddingRight(2)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2).Foreground(lipgloss.Color("#ff5500"))
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4)
-	borderStyle       = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
+	borderStyle       = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).Width(30)
 )
 
 type versionInfo struct {
@@ -45,15 +45,15 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	fn := itemStyle.Render
+	var str string
+
 	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
+		str = selectedItemStyle.Render(fmt.Sprintf("> %s - %s", i.name, i.version))
+	} else {
+		str = fmt.Sprintf("%s - %s", itemStyle.Render(i.name), versionStyle.Render(i.version))
 	}
 
-	str := fmt.Sprintf("%s - %s", i.name, i.version)
-	fmt.Fprint(w, fn(str))
+	fmt.Fprint(w, str)
 }
 
 type (
@@ -69,15 +69,14 @@ type model struct {
 	err      error
 }
 
-func initModel(version_list []list.Item, width int) *model {
-	l := list.New(version_list, itemDelegate{}, width, 10)
+func initModel(version_list []list.Item) *model {
+	l := list.New(version_list, itemDelegate{}, 30, 10)
 	l.Title = "Select Go Version"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
 	l.SetShowHelp(false)
 	l.Styles.Title = titleStyle
 	l.Styles.PaginationStyle = paginationStyle
-	l.Styles.HelpStyle = helpStyle
 	return &model{
 		false,
 		false,
@@ -205,7 +204,7 @@ func main() {
 		return a.name > b.name
 	})
 
-	m := initModel(version_list, max_width)
+	m := initModel(version_list)
 
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
