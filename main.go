@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -21,7 +22,7 @@ var (
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).PaddingRight(2).Foreground(lipgloss.Color("#ff5500"))
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4)
-    borderStyle = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
+	borderStyle       = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder())
 )
 
 type versionInfo struct {
@@ -68,8 +69,8 @@ type model struct {
 	err      error
 }
 
-func initModel(versionList []list.Item) *model {
-	l := list.New(versionList, itemDelegate{}, 40, 10)
+func initModel(version_list []list.Item, width int) *model {
+	l := list.New(version_list, itemDelegate{}, width, 10)
 	l.Title = "Select Go Version"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
@@ -153,52 +154,58 @@ func main() {
 	}
 	GO_DIR = os.Args[1]
 
-	f, err := os.Open(GO_DIR)
-	if err != nil {
-		log.Fatalf("Unable to open directory %s: %v", GO_DIR, err)
-	}
+	var max_width int
 
-	files, err := f.Readdir(0)
-	if err != nil {
-		log.Fatal("Readdir:", err)
-	}
+	// Walk directory provided from args to get all available go versions
+	version_list := make([]list.Item, 0)
+	err := filepath.Walk(GO_DIR, func(path string, info os.FileInfo, err error) error {
+		if info.IsDir() {
+			// Only directories with 'go-build-zos/' are valid go versions
+			if _, err := os.Stat(fmt.Sprintf("%s/go-build-zos", path)); err == nil {
 
-	versionList := make([]list.Item, 0)
-	for _, v := range files {
-		if v.IsDir() {
-			b, err := os.ReadFile(fmt.Sprintf("%s/%s/VERSION", GO_DIR, v.Name()))
-			if err != nil {
-				b = []byte("unknown")
+				// Read version number
+				b, err := os.ReadFile(fmt.Sprintf("%s/VERSION", path))
+				if err != nil {
+					b = []byte("unknown")
+				}
+				versionString := string(b)
+
+				// Only get first line
+				n := len(versionString)
+				if i := strings.IndexByte(versionString, byte('\n')); i != -1 {
+					n = i
+				}
+
+				version_list = append(version_list, versionInfo{
+					name:    info.Name(),
+					version: versionString[:n],
+				})
+
+				// Format: "my_go_ver - go1.23.4"
+				max_width = max(max_width, len(info.Name())+n+3)
 			}
-			versionString := string(b)
-
-			// Only get first line
-			n := len(versionString)
-			if i := strings.IndexByte(versionString, byte('\n')); i != -1 {
-				n = i
-			}
-			versionList = append(versionList, versionInfo{
-				name:    v.Name(),
-				version: versionString[:n],
-			})
 		}
+		return nil
+	})
+	if err != nil {
+		log.Fatalf("Error searching '%s': %v", GO_DIR, err)
 	}
 
-	if len(versionList) == 0 {
+	if len(version_list) == 0 {
 		log.Fatal("No Go installations found...")
 	}
 
-    // Reverse sorted because I assume the newer version will be selected most...
-	sort.Slice(versionList, func(i, j int) bool {
-		a, ok1 := versionList[i].(versionInfo)
-		b, ok2 := versionList[j].(versionInfo)
+	// Reverse sorted because I assume the newer version will be selected most...
+	sort.Slice(version_list, func(i, j int) bool {
+		a, ok1 := version_list[i].(versionInfo)
+		b, ok2 := version_list[j].(versionInfo)
 		if !ok1 || !ok2 {
 			log.Fatal("Unable to sort...")
 		}
 		return a.name > b.name
 	})
 
-	m := initModel(versionList)
+	m := initModel(version_list, max_width)
 
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
