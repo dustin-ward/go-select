@@ -1,4 +1,4 @@
-module dustin-ward/go-selector
+module github.com/dustin-ward/go-select
 
 go 1.21
 

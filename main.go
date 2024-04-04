@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dustin-ward/go-select/versions"
+
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -26,22 +28,13 @@ var (
 	borderStyle       = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).Width(30)
 )
 
-type versionInfo struct {
-	name    string
-	version string
-}
-
-var SELECTED *versionInfo
-
-func (v versionInfo) FilterValue() string { return v.name }
-
 type itemDelegate struct{}
 
 func (d itemDelegate) Height() int                             { return 1 }
 func (d itemDelegate) Spacing() int                            { return 0 }
 func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(versionInfo)
+	i, ok := listItem.(versions.Info)
 	if !ok {
 		return
 	}
@@ -49,9 +42,9 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	var str string
 
 	if index == m.Index() {
-		str = selectedItemStyle.Render(fmt.Sprintf("> %s - %s", i.name, i.version))
+		str = selectedItemStyle.Render(fmt.Sprintf("> %s - %s", i.Name, i.Version))
 	} else {
-		str = fmt.Sprintf("%s %s", itemStyle.Render(i.name), versionStyle.Render("- "+i.version))
+		str = fmt.Sprintf("%s %s", itemStyle.Render(i.Name), versionStyle.Render("- "+i.Version))
 	}
 
 	fmt.Fprint(w, str)
@@ -105,8 +98,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if k == "enter" {
 			m.chosen = true
-			v, _ := m.list.SelectedItem().(versionInfo)
-			SELECTED = &v
+			v, _ := m.list.SelectedItem().(versions.Info)
+			versions.SELECTED = &v
 			return m, selectVersion
 		}
 
@@ -126,8 +119,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	if m.quitting {
-		if SELECTED != nil {
-			return fmt.Sprintf("Go version: %s (named: %s)\n", SELECTED.version, SELECTED.name)
+		if versions.SELECTED != nil {
+			return fmt.Sprintf("Go version: %s (named: %s)\n", versions.SELECTED.Version, versions.SELECTED.Name)
 		} else {
 			return "No Go version selected"
 		}
@@ -139,7 +132,7 @@ func (m model) View() string {
 }
 
 func selectVersion() tea.Msg {
-	cmd := fmt.Sprintf("export GOROOT=%s/%s", GO_DIR, SELECTED.name)
+	cmd := fmt.Sprintf("export GOROOT=%s/%s", GO_DIR, versions.SELECTED.Name)
 	err := os.WriteFile(fmt.Sprintf("%s/selected", GO_DIR), []byte(cmd), 0666)
 	if err != nil {
 		return errMsg{err}
@@ -184,9 +177,9 @@ func main() {
 					n = i
 				}
 
-				version_list = append(version_list, versionInfo{
-					name:    info.Name(),
-					version: versionString[:n],
+				version_list = append(version_list, versions.Info{
+					Name:    info.Name(),
+					Version: versionString[:n],
 				})
 			}
 		}
