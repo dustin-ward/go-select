@@ -162,26 +162,34 @@ func main() {
 			}
 
 			// Only directories with 'go-build-zos/' are valid go versions
+			var isGo bool = false
 			if _, err := os.Stat(fmt.Sprintf("%s/go-build-zos", path)); err == nil {
-
-				// Read version number
-				b, err := os.ReadFile(fmt.Sprintf("%s/VERSION", path))
-				if err != nil {
-					b = []byte("unknown")
-				}
-				versionString := string(b)
-
-				// Only get first line
-				n := len(versionString)
-				if i := strings.IndexByte(versionString, byte('\n')); i != -1 {
-					n = i
-				}
-
-				version_list = append(version_list, versions.Info{
-					Name:    info.Name(),
-					Version: versionString[:n],
-				})
+				isGo = true
 			}
+			if _, err := os.Stat(fmt.Sprintf("%s/IBM_README.txt", path)); err == nil {
+				isGo = true
+			}
+			if !isGo {
+				return nil
+			}
+
+			// Read version number
+			b, err := os.ReadFile(fmt.Sprintf("%s/VERSION", path))
+			if err != nil {
+				b = []byte("unknown")
+			}
+			versionString := string(b)
+
+			// Only get first line
+			n := len(versionString)
+			if i := strings.IndexByte(versionString, byte('\n')); i != -1 {
+				n = i
+			}
+
+			version_list = append(version_list, versions.Info{
+				Name:    info.Name(),
+				Version: versionString[:n],
+			})
 		}
 		return nil
 	})
