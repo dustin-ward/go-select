@@ -49,6 +49,7 @@ function go-select() {
             echo "Couldnt find go-build-zos..."
         fi
         echo "exec \"${GOROOT}/bin/go\" \"\$@\"" >> $go_wrapper
+        chmod +x $go_wrapper
 
         rm $selected
     else
