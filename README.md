@@ -42,9 +42,11 @@ function go-select() {
         if [[ -f $GOROOT/go-build-zos/bin/goz-env ]]; then
             # Do goz-env -o manually because not all versions of goz-env have -o...
             echo "eval \$(${GOROOT}/go-build-zos/bin/goz-env) > /dev/null" >> $go_wrapper
+            export PATH=$GOROOT/go-build-zos/bin:$PATH
         elif [[ -f $GOROOT/go-build-zos/envsetup ]]; then
             # Create wrapper manually for 1.18 or older...
             echo "source ${GOROOT}/go-build-zos/envsetup > /dev/null" >> $go_wrapper
+            export PATH=$GOROOT/go-build-zos/bin:$PATH
         else
             echo "Couldnt find go-build-zos..."
         fi
